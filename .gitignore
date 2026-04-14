@@ -157,3 +157,6 @@ __marimo__/
 scripts/
 _transient-files/
 tests/
+
+homework/
+week1/run_rasa_conversations.py

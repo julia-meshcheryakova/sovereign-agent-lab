@@ -330,7 +330,7 @@ def check_ex3() -> None:
 
     actions_path = ROOT / "exercise3_rasa" / "actions" / "actions.py"
     if actions_path.exists():
-        source = actions_path.read_text()
+        source = actions_path.read_text(encoding="utf-8")
         code_only = _strip_comments_and_docstrings(source)
 
         # Cutoff guard: at least one un-commented `now = datetime.datetime.now()`

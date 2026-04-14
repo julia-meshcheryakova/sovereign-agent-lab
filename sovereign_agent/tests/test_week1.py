@@ -18,10 +18,13 @@ These tests use only the standard library and pytest — no API calls.
 They're safe to run offline.
 """
 
+import datetime as dt
+import importlib
 import json
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Add the student_pack root to path so imports work
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -195,3 +198,103 @@ class TestGenerateEventFlyer:
         assert isinstance(result["image_url"], str)
         assert len(result["image_url"]) > 0, \
             "image_url should not be empty when success=True"
+
+
+# ─── ActionValidateBooking (cutoff guard) ─────────────────────────────────────
+
+class TestCutoffGuard:
+    """Test the Task B time-based cutoff guard in exercise3_rasa/actions/actions.py."""
+
+    @pytest.fixture(autouse=True)
+    def _import_action(self):
+        """Import ActionValidateBooking, mocking rasa_sdk if not installed."""
+
+        class _FakeAction:
+            def name(self):
+                return ""
+
+        def _fake_slot_set(key, value):
+            return {"event": "slot", "name": key, "value": value}
+
+        mock_rasa = MagicMock()
+        mock_rasa.Action = _FakeAction
+        mock_rasa.Tracker = MagicMock
+        mock_events = MagicMock()
+        mock_events.SlotSet = _fake_slot_set
+        mock_executor = MagicMock()
+
+        mods = {
+            "rasa_sdk": mock_rasa,
+            "rasa_sdk.events": mock_events,
+            "rasa_sdk.executor": mock_executor,
+        }
+        saved = {k: sys.modules.get(k) for k in mods}
+        sys.modules.update(mods)
+
+        rasa_dir = str(Path(__file__).parent.parent.parent / "exercise3_rasa")
+        sys.path.insert(0, rasa_dir)
+        for mod in ("actions", "actions.actions"):
+            sys.modules.pop(mod, None)
+
+        self.actions_mod = importlib.import_module("actions.actions")
+        self.ActionValidateBooking = self.actions_mod.ActionValidateBooking
+
+        yield
+
+        sys.path.remove(rasa_dir)
+        for mod in ("actions", "actions.actions"):
+            sys.modules.pop(mod, None)
+        for k, v in saved.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+
+    def _make_tracker(self, guests=160, vegans=50, deposit=200):
+        """Return a mock Tracker with valid slots by default."""
+        tracker = MagicMock()
+        slots = {
+            "guest_count": guests,
+            "vegan_count": vegans,
+            "deposit_amount_gbp": deposit,
+        }
+        tracker.get_slot.side_effect = lambda k: slots.get(k)
+        return tracker
+
+    def test_before_cutoff_confirms(self):
+        """Valid booking before 16:45 should be confirmed."""
+        with patch.object(self.actions_mod, "datetime") as mock_dt_mod:
+            mock_dt_mod.datetime.now.return_value = dt.datetime(2026, 4, 14, 14, 0)
+            result = self.ActionValidateBooking().run(
+                MagicMock(), self._make_tracker(), {}
+            )
+        assert any(
+            e["name"] == "booking_valid" and e["value"] is True for e in result
+        )
+
+    def test_after_cutoff_escalates(self):
+        """Booking at 16:50 should trigger cutoff escalation."""
+        with patch.object(self.actions_mod, "datetime") as mock_dt_mod:
+            mock_dt_mod.datetime.now.return_value = dt.datetime(2026, 4, 14, 16, 50)
+            result = self.ActionValidateBooking().run(
+                MagicMock(), self._make_tracker(), {}
+            )
+        assert any(
+            e["name"] == "booking_valid" and e["value"] is False for e in result
+        )
+        assert any(
+            "16:45" in str(e.get("value", ""))
+            for e in result
+            if e["name"] == "rejection_reason"
+        )
+
+    def test_exactly_at_cutoff_escalates(self):
+        """Booking at exactly 16:45 should be escalated."""
+        with patch.object(self.actions_mod, "datetime") as mock_dt_mod:
+            mock_dt_mod.datetime.now.return_value = dt.datetime(2026, 4, 14, 16, 45)
+            result = self.ActionValidateBooking().run(
+                MagicMock(), self._make_tracker(), {}
+            )
+        assert any(
+            e["name"] == "booking_valid" and e["value"] is False for e in result
+        )
