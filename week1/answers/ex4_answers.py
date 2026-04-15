@@ -7,30 +7,30 @@ Fill this in after running exercise4_mcp_client.py.
 # ── Basic results ──────────────────────────────────────────────────────────
 
 # Tool names as shown in "Discovered N tools" output.
-TOOLS_DISCOVERED = []
+TOOLS_DISCOVERED = ["search_venues", "get_venue_details"]
 
-QUERY_1_VENUE_NAME    = "FILL_ME_IN"
-QUERY_1_VENUE_ADDRESS = "FILL_ME_IN"
-QUERY_2_FINAL_ANSWER  = "FILL_ME_IN"
+QUERY_1_VENUE_NAME    = "The Haymarket Vaults"
+QUERY_1_VENUE_ADDRESS = "1 Dalry Road, Edinburgh"
+QUERY_2_FINAL_ANSWER  = "It seems there are no Edinburgh venues currently available that can accommodate 300 people with vegan options. Would you like me to:\n\n1. Search for venues with a lower minimum capacity (e.g., 250)?\n2. Look for venues with vegan options that aren't currently marked as \"available\"?\n3. Check for venues outside Edinburgh's city center?\n\nLet me know how you'd like to proceed!"
 
 # ── The experiment ─────────────────────────────────────────────────────────
 # Required: modify venue_server.py, rerun, revert.
 
-EX4_EXPERIMENT_DONE = None   # True or False
+EX4_EXPERIMENT_DONE = True
 
 # What changed, and which files did or didn't need updating? Min 30 words.
 EX4_EXPERIMENT_RESULT = """
-FILL ME IN
+After changing The Albanach's status from 'available' to 'full' or 'availabl' (with typo), the search_venues tool returned only 1 match (The Haymarket Vaults) instead of 2 (before). The agent recommended The Haymarket Vaults as the only available venue. exercise4_mcp_client.py did NOT need any changes. Only the MCP server file was modified, the client discovered data at runtime.
 """
 
 # ── MCP vs hardcoded ───────────────────────────────────────────────────────
 
-LINES_OF_TOOL_CODE_EX2 = 0   # count in exercise2_langgraph.py
-LINES_OF_TOOL_CODE_EX4 = 0   # count in exercise4_mcp_client.py
+LINES_OF_TOOL_CODE_EX2 = 183   # count in venue_tools.py (4 @tool functions imported by exercise2)
+LINES_OF_TOOL_CODE_EX4 = 0     # count in exercise4_mcp_client.py (0 tool definitions — all discovered from MCP server)
 
 # What does MCP buy you beyond "the tools are in a separate file"? Min 30 words.
 MCP_VALUE_PROPOSITION = """
-FILL ME IN
+Dynamic tool discovery: the client is just bound to the server, but it never hardcodes tool names. When the server tools are updated (added, deleted), every connected client sees the update automatically without code changes or redeployment. Varied agents can share the same tool server, single source of truth for venue data. We also get standardised arguments and results formats.
 """
 
 # ── PyNanoClaw architecture — SPECULATION QUESTION ─────────────────────────
